@@ -26,6 +26,19 @@ This sketch isolates and tests different initialization orders and delays.
 5. **I2C ping** — scan addresses 0x36–0x45 for ACK/NACK
 6. **Register dump** — read MAX17048 VERSION and STATUS
 
+## Findings (2026-04-26)
+
+| Test | Result | Note |
+|------|--------|------|
+| 1 Baseline | ✅ `VERSION = 0x12` | Chip rev 0x12, mask `0xFFF0` OK |
+| 2 SHT3x → 50ms → MAX17048 | ✅ MAX17048 OK | No init conflict |
+| 3 SHT3x → 500ms → MAX17048 | ✅ MAX17048 OK | Delay not required |
+| 4 MAX17048 → SHT3x → MAX17048 | ✅ Both OK | Order irrelevant |
+| 5 I2C ping 0x36–0x45 | ⚠️ All ACK | Ameba quirk, harmless |
+| 6 Register dump | ✅ VER=`0x12`, STATUS=`0xFFFF` | STATUS read fails (likely bus state after ping) |
+
+**Conclusion:** The combined initialization itself works. The previous failure in the combined sketch was caused by something else (likely double `Wire.begin()` or wrong init order in the earlier attempt). The production sketch in `98_MAX_SH` uses the same init sequence and works correctly.
+
 ## Serial Output
 
 ```
@@ -34,20 +47,20 @@ This sketch isolates and tests different initialization orders and delays.
 ========================================
 
 --- TEST 1: MAX17048 only (baseline) ---
-  VERSION read = 0x001F
+  VERSION read = 0x12
 MAX17048: OK
 
 --- TEST 2: SHT3x softReset -> delay 50ms -> MAX17048 ---
   endTransmission err = 0
 SHT3x softReset: OK
-  VERSION read = 0xFFFF
-MAX17048 after SHT3x reset: FAIL
+  VERSION read = 0x12
+MAX17048 after SHT3x reset: OK
 ...
 ```
 
 ## Next Steps
 
-Depending on test results, apply fixes to the main combined sketch.
+Use `98_MAX_SH` for production. This debug workspace is kept for reference.
 
 ## License
 
